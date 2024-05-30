@@ -3,7 +3,7 @@ services:
   business:
     build:
       context: ..
-      dockerfile: Business/Dockerfile
+      dockerfile: GameLibrary/Dockerfile
     image: magnusandersen/business-app:latest
     restart: always
     environment:
