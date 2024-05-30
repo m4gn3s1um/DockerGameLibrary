@@ -1,0 +1,5 @@
+version: "3.9"
+
+services:
+  businessprod:
+    image: magnusandersen/business-app:delivery
