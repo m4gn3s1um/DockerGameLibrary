@@ -1,0 +1,90 @@
+kind: pipeline
+type: docker
+name: integration
+
+steps:
+  - name: code-analysis
+    image: boulundeasv/dotnet-sdk-with-java
+    environment:
+      SONARSECRET:
+        from_secret: SonarCubeToken
+      SONARKEY:
+        from_secret: SonarCubeKey
+    commands:
+      - dotnet sonarscanner begin /k:"$SONARKEY" /d:sonar.host.url="http://sonar.setgo.dk:9000"  /d:sonar.token="$SONARSECRET"
+      - dotnet build
+      - dotnet sonarscanner end /d:sonar.token="$SONARSECRET"
+
+---
+
+kind: pipeline
+type: docker
+name: deliver
+depends_on:
+  - integration
+
+steps:
+  - name: publish api
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: DockerUsername
+      password:
+        from_secret: DockerPassword
+      context: GameLibrary
+      dockerfile: GameLibrary/Dockerfile
+      repo: magnusandersen/business-app
+      tags: 
+        - latest
+
+  - name: trigger update
+    image: curlimages/curl
+    commands:
+      - "curl --fail -X GET 'http://45.90.123.95:8080/v1/update' -H 'Authorization: Bearer mytoken'" # Must match the token defined in docker-compose.yml
+      - sleep 10
+    depends_on:
+      - publish api
+
+  - name: update database
+    image: flyway/flyway
+    commands:
+      - flyway migrate -url=jdbc:mysql://45.90.123.95:3306/GameLib -user=root -password=MY_S€cr€t_P@ssw0rD -locations=filesystem:./db/sql
+    depends_on:
+      - trigger update
+
+---
+
+kind: pipeline
+type: docker
+name: deploy
+depends_on:
+  - deliver
+
+steps:
+  - name: release api
+    image: plugins/docker
+    settings:
+      username:
+        from_secret: DockerUsername
+      password:
+        from_secret: DockerPassword
+      context: GameLibrary
+      dockerfile: GameLibrary/Dockerfile
+      repo: magnusandersen/business-app
+      tags:
+        - delivery
+        
+  - name: trigger update
+    image: curlimages/curl
+    commands:
+      - "curl -X GET 'http://45.90.123.96:8080/v1/update' -H 'Authorization: Bearer mytoken'" # Must match the token defined in docker-compose.yml
+      - sleep 10
+    depends_on:
+      - release api
+
+  - name: update database
+    image: flyway/flyway
+    commands:
+      - flyway migrate -url=jdbc:mysql://45.90.123.96:3306/GameLib -user=root -password=MY_S€cr€t_P@ssw0rD -locations=filesystem:./db/sql
+    depends_on:
+      - trigger update
