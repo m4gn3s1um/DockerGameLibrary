@@ -1,0 +1,47 @@
+version: '3.8'
+services:
+  business:
+    build:
+      context: ..
+      dockerfile: Business/Dockerfile
+    image: magnusandersen/business-app:latest
+    restart: always
+    environment:
+      - DATABASE_HOST=app-database
+    depends_on:
+      - app-database
+    ports:
+      - 5001:8080
+
+  app-database:
+    image: mysql
+    restart: always
+    volumes:
+      - ./db/data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: MY_S€cr€t_P@ssw0rD
+      MYSQL_DATABASE: GameLib
+    ports:
+      - 63306:3306
+
+  flyway:
+    image: flyway/flyway:10
+    command: migrate
+    volumes:
+      - ./db/sql:/flyway/sql
+      - ./db:/flyway/conf
+    depends_on:
+      - app-database
+  
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --debug --http-api-update
+    environment:
+      - WATCHTOWER_HTTP_API_TOKEN=mytoken
+      - WATCHTOWER_LABEL_ENABLE=true
+    labels:
+      - "com.centurylinklabs.watchtower.enable=false"
+    ports:
+      - 8080:8080
