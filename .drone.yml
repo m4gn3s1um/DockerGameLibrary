@@ -48,7 +48,7 @@ steps:
   - name: update database
     image: flyway/flyway
     commands:
-      - flyway migrate -url=jdbc:mysql://45.90.123.95:3306/GameLib -user=root -password=MY_S€cr€t_P@ssw0rD -locations=filesystem:./db/sql
+      - flyway migrate -url=jdbc:mysql://45.90.123.95:63306/GameLib -user=root -password=MY_S€cr€t_P@ssw0rD -locations=filesystem:./db/sql
     depends_on:
       - trigger update
 
